@@ -70,7 +70,7 @@ def main(argv=None):
         shutil.copyfile(source, target)
     except OSError:
       print("Could not copy {}. Target already exists?".format(source))
-  
+      print(OSError.strerror.format())
 """
 Loads the YAGO configuration file.
 """
@@ -114,6 +114,7 @@ def makedirs_p(path):
 if __name__ == "__main__":
   # Parse options
   options = docopt(__doc__)
+  print("made it to the persistently dump script: f2222")
   
   yagoConfigurationFile = options['--yago-configuration-file']
   outputDir = options['--output-dir']

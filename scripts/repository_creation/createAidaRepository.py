@@ -27,7 +27,7 @@ Create an AmbiverseNLU repository for the most recent Wikipedia dump versions fo
 -----
 
 Usage:
-  createAidaRepository.py -d TARGET_DIR -b BASICS_DIST_DIR -y YAGO_DIST_DIR -i YAGO_INDEX_DIR -a AIDA_DIST_DIR -t AIDA_TEMP_DIR (-l LANGUAGE ...) [(--date=DATE ...)] [--wikidata-date=WIKIDATA_DATE] [-s START_DATE] [--reuse-yago] --db-server=DB_SERVER --db-username=DB_USERNAME --db-password=DB_PASSWORD -o DUMPS_OUTPUT_DIR (-c CASSANDRA_HOST ...) [--yago-ini=YAGO_INI] [--skip-aida] [--include-concepts] [--run-neo4j] [--neo4j-file-dir=NEO4J_FILE_DIR] [--neo4j-server=NEO4J_SERVER] [--neo4j-ssh-username=SSH_USERNAME] [--neo4j-ssh-password=SSH_PASSWORD] [--neo4j-destination-dir=NEO4J_DESTINATION_DIR] [--neo4j-import-server-dir=NEO4j_IMPORT_SERVER_DIR] [--stages=STAGES] [--subgraph-entities=SUBGRAPH_ENTITIES] [--subgraph-classes=SUBGRAPH_CLASSES]
+  createAidaRepository.py -d TARGET_DIR -b BASICS_DIST_DIR -y YAGO_DIST_DIR -i YAGO_INDEX_DIR -a AIDA_DIST_DIR -t AIDA_TEMP_DIR (-l LANGUAGE ...) [(--date=DATE ...)] [--wikidata-date=WIKIDATA_DATE] [-s START_DATE] [--reuse-yago] --db-server=DB_SERVER --db-username=DB_USERNAME --db-password=DB_PASSWORD -o DUMPS_OUTPUT_DIR [--yago-ini=YAGO_INI] [--skip-aida] [--include-concepts] [--stages=STAGES] [--subgraph-entities=SUBGRAPH_ENTITIES] [--subgraph-classes=SUBGRAPH_CLASSES]
   
 Options:
   -d TARGET_DIR --target-dir=TARGET_DIR                     directory to store the Wikipedia and Wikidata dumps
@@ -44,18 +44,10 @@ Options:
   --db-server=DB_SERVER                                     database server that holds the AIDA database
   --db-username=DB_USERNAME                                 username to use with the AIDA database
   --db-password=DB_PASSWORD                                 password to use with the AIDA database
-  -c CASSANDRA_HOST --cassandra-host=CASSANDRA_HOST         Cassandra host that the data will be populated to
   --reuse-yago                                              Flag to set reuse yago output to true
   --yago-ini=YAGO_INI                                       the YAGO configuration file to load [default: yago_aida.ini]
   --skip-aida                                               does not run the AIDA process
   --include-concepts                                        include concepts in the YAGO
-  --run-neo4j                                               run neo4j extractor and import
-  --neo4j-file-dir=NEO4J_FILE_DIR                           directory where to store the generated Neo4j import files
-  --neo4j-server=NEO4J_SERVER                               neo4j database server name (default=hard)
-  --neo4j-ssh-username=SSH_USERNAME                         username to use for ssh copy
-  --neo4j-ssh-password=SSH_PASSWORD                         password to use for ssh copy
-  --neo4j-destination-dir=NEO4J_DESTINATION_DIR             neo4j destination path on the server
-  --neo4j-import-server-dir=NEO4j_IMPORT_SERVER_DIR         neo4j server path that is used for import script
   --stages=STAGES                                           stages to run (override preconfigured stages)
   --subgraph-entities=SUBGRAPH_ENTITIES                     sets subgraphEntities in the yago.ini, restricting the entities in YAGO
   --subgraph-classes=SUBGRAPH_CLASSES                       sets subgraphClasses in the yago.ini, restricting the entities in YAGO
@@ -144,7 +136,7 @@ def main(argv=None):
     adaptYagoConfiguration()        # Initial adaptation of YAGO configuration (languages, dumpsFolder)
 
     print("Downloading dump(s)...")
-    downloadDumps()                 # Adaptation of YAGO configuration (dumps locations)
+    # downloadDumps()                 # Adaptation of YAGO configuration (dumps locations)
 
     print("Loading YAGO output folder from configuration file...")
     yagoFolder, neo4jFolder = loadYagoFolderFromAdaptedConfiguration()       # Adaptation of YAGO configuration (yagoFolder, neo4jFolder)
@@ -176,6 +168,7 @@ def main(argv=None):
 
 
 def execute(cmd, customEnv=None):
+    # Error in Parallel Caller.java
     process = subprocess.Popen(cmd, stdout=PIPE, stderr=STDOUT, universal_newlines=True, env=customEnv)
 
     for line in iter(process.stdout.readline, ""):
@@ -196,8 +189,8 @@ Invokes the external shell script for downloading and extracting the Wikipedia d
 def downloadDumps():
     os.chdir(os.path.abspath(yagoDistDir))
 
-    processCall = ['python3', '-u', os.path.join(os.path.abspath(yagoDistDir), YAGO3_DOWNLOADDUMPS_SCRIPT),
-                   '-y', os.path.join(os.path.abspath(yagoDistDir), YAGO3_CONFIGURATION_SUBDIR, YAGO3_TMP_CONFIGURATION),
+    processCall = ['python', '-u', os.path.join(os.path.abspath(""), YAGO3_DOWNLOADDUMPS_SCRIPT),
+                   '-y', os.path.join(os.path.abspath(""), YAGO3_CONFIGURATION_SUBDIR, YAGO3_TMP_CONFIGURATION),
                    '-s', startDate.strftime("%Y%m%d")]
 
     if dates:
@@ -327,8 +320,8 @@ Runs YAGO3 with the adapted configuration file
 
 def runYago():
     # Install most recent version of BASICS
-    os.chdir(basicsDistDir)
-    execute(['mvn', '-U', 'clean', 'verify', 'install'])
+    # os.chdir(basicsDistDir)
+    # execute(['mvn', '-U', 'clean', 'verify', 'install', '-DskipTests'])
 
     # Build and run YAGO
 
@@ -340,7 +333,7 @@ def runYago():
     myEnv['MAVEN_OPTS'] = '-Xmx400G'
 
     execute(
-        ['mvn', '-U', 'clean', 'verify', 'exec:java',
+        ['mvn', '-U', '-q', 'clean', 'verify', 'exec:java',
          '-Dexec.args=' + YAGO3_CONFIGURATION_SUBDIR + '/' + YAGO3_TMP_CONFIGURATION + '.adapted.ini'],
         myEnv)
 
@@ -526,9 +519,9 @@ def persistAidaConfiguration(dbName):
   return aidaConfigTargetDir
   
 def persistentlyStoreDumps():
-  os.chdir(os.path.abspath(aidaDistDir))
+  # os.chdir(os.path.abspath(aidaDistDir))
 
-  processCall = ['python3', os.path.join(os.path.abspath(aidaDistDir), AIDA_PERSISTENTLY_STORE_DUMPS_SCRIPT),
+  processCall = ['python', os.path.join(os.path.abspath(aidaDistDir), AIDA_PERSISTENTLY_STORE_DUMPS_SCRIPT),
                  '-y', os.path.join(os.path.abspath(yagoDistDir), YAGO3_CONFIGURATION_SUBDIR, YAGO3_TMP_CONFIGURATION),
                  '-d', targetDir,
                  '-o', dumpsOutputDir]
@@ -647,7 +640,7 @@ if __name__ == "__main__":
     dbServer = options['--db-server']
     dbUsername = options['--db-username']
     dbPassword = options['--db-password']
-    cassandraHosts = options['--cassandra-host']
+    # cassandraHosts = options['--cassandra-host']
 
     # Read optional arguments with dynamic defaults
     if options['--start-date']:
@@ -680,33 +673,33 @@ if __name__ == "__main__":
     else:
       include_concepts = False
 
-    if options['--run-neo4j']:
-      run_neo4j = True
-      
-      if not options['--neo4j-file-dir']:
-        print ("Error: Must provide neo4j-file-dir")
-        sys.exit(1)
-        
-      neo4jFileDir = options['--neo4j-file-dir']
-      
-      if options['--neo4j-server']:
-        NEO4J_DESTINATION_SERVER_NAME = options['--neo4j-server'] 
-      
-      if not options['--neo4j-ssh-username'] or not options['--neo4j-ssh-password']:
-        print ("Error: Must provide neo4j-ssh-username and neo4j-ssh-password")
-        sys.exit(1)
-      
-      ssh_username = options['--neo4j-ssh-username']
-      ssh_password = options['--neo4j-ssh-password']
-      
-      if options['--neo4j-import-server-dir']:
-        NEO4J_SOURCE_SERVER_PATH = options['--neo4j-import-server-dir']
-        
-      if options['--neo4j-destination-dir']:
-        NEO4J_DESTINATION_DIR_PATH = options['--neo4j-destination-dir']
-        
-    else:
-      run_neo4j = False
+    # if options['--run-neo4j']:
+    #   run_neo4j = True
+    #
+    #   if not options['--neo4j-file-dir']:
+    #     print ("Error: Must provide neo4j-file-dir")
+    #     sys.exit(1)
+    #
+    #   neo4jFileDir = options['--neo4j-file-dir']
+    #
+    #   if options['--neo4j-server']:
+    #     NEO4J_DESTINATION_SERVER_NAME = options['--neo4j-server']
+    #
+    #   if not options['--neo4j-ssh-username'] or not options['--neo4j-ssh-password']:
+    #     print ("Error: Must provide neo4j-ssh-username and neo4j-ssh-password")
+    #     sys.exit(1)
+    #
+    #   ssh_username = options['--neo4j-ssh-username']
+    #   ssh_password = options['--neo4j-ssh-password']
+    #
+    #   if options['--neo4j-import-server-dir']:
+    #     NEO4J_SOURCE_SERVER_PATH = options['--neo4j-import-server-dir']
+    #
+    #   if options['--neo4j-destination-dir']:
+    #     NEO4J_DESTINATION_DIR_PATH = options['--neo4j-destination-dir']
+    #
+    # else:
+    run_neo4j = False
 
     yagoSubgraphEntities = ""
     yagoSubgraphClasses = ""
